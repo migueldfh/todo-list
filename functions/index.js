@@ -1,19 +1,41 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+import * as functions from 'firebase-functions'
+import * as express from 'express'
+import * as cors from 'cors'
 
-const {onRequest} = require("firebase-functions/v2/https");
-const logger = require("firebase-functions/logger");
+const app = express()
+app.use(cors({ origin: true }))
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+let todos = []
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+app.get('/todos', (req, res) => {
+  res.json(todos)
+})
+
+app.post('/todos', (req, res) => {
+  const newTodo = {
+    id: Date.now(),
+    text: req.body.text,
+    done: false
+  }
+  todos.push(newTodo)
+  res.json(newTodo)
+})
+
+app.put('/todos/:id', (req, res) => {
+  const todoId = parseInt(req.params.id)
+  const todo = todos.find(t => t.id === todoId)
+  if (todo) {
+    todo.text = req.body.text || todo.text
+    todo.done = req.body.done !== undefined ? req.body.done : todo.done
+    res.json(todo)
+  } else {
+    res.status(404).json({ error: 'Element not found' })
+  }
+})
+
+app.delete('/todos/:id', (req, res) => {
+  todos = todos.filter(t => t.id !== parseInt(req.params.id))
+  res.status(204).send()
+})
+
+exports.api = functions.https.onRequest(app)
